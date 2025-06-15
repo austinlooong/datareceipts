@@ -24,6 +24,8 @@ relevant_files = {
 watch_history = []
 search_history = []
 google_search_history = []
+location_pings = []
+semantic_visits = 0
 
 if uploaded_file:
     with zipfile.ZipFile(uploaded_file) as z:
@@ -78,6 +80,33 @@ if uploaded_file:
                         data = json.load(f)
                         if isinstance(data, list):
                             google_search_history.extend(data)
+                    except Exception as e:
+                        st.warning(f"Could not parse {fname}: {e}")
+
+        # --- Parse Location History Records.json ---
+        for fname in relevant_files['Location History']:
+            if 'records.json' in fname.lower():
+                with z.open(fname) as f:
+                    try:
+                        data = json.load(f)
+                        if isinstance(data, list):
+                            location_pings.extend(data)
+                        elif isinstance(data, dict) and 'locations' in data:
+                            location_pings.extend(data['locations'])
+                    except Exception as e:
+                        st.warning(f"Could not parse {fname}: {e}")
+
+        # --- Parse Semantic Location History ---
+        for fname in relevant_files['Location History']:
+            if 'semantic location history' in fname.lower() and fname.lower().endswith('.json'):
+                with z.open(fname) as f:
+                    try:
+                        data = json.load(f)
+                        # Each file is a dict with 'timelineObjects' key
+                        if isinstance(data, dict) and 'timelineObjects' in data:
+                            for obj in data['timelineObjects']:
+                                if 'placeVisit' in obj:
+                                    semantic_visits += 1
                     except Exception as e:
                         st.warning(f"Could not parse {fname}: {e}")
 
@@ -139,3 +168,13 @@ if uploaded_file:
             st.write(f"**Estimated value generated (Google search history):** ${value_search:.2f}")
         else:
             st.info("No Google Search History found or could not be parsed.")
+
+        # --- Analyze Location Data ---
+        if location_pings or semantic_visits:
+            st.header("Location History Analysis")
+            st.write(f"**Total location pings (Records.json):** {len(location_pings)}")
+            st.write(f"**Total place visits (Semantic Location History):** {semantic_visits}")
+            value_location = len(location_pings) * 0.01 + semantic_visits * 0.01
+            st.write(f"**Estimated value generated (location history):** ${value_location:.2f}")
+        else:
+            st.info("No Location History found or could not be parsed.")
