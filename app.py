@@ -23,6 +23,7 @@ relevant_files = {
 
 watch_history = []
 search_history = []
+google_search_history = []
 
 if uploaded_file:
     with zipfile.ZipFile(uploaded_file) as z:
@@ -69,6 +70,17 @@ if uploaded_file:
                     except Exception as e:
                         st.warning(f"Could not parse {fname}: {e}")
 
+        # --- Parse Google Search History ---
+        if relevant_files['Google Search History']:
+            for fname in relevant_files['Google Search History']:
+                with z.open(fname) as f:
+                    try:
+                        data = json.load(f)
+                        if isinstance(data, list):
+                            google_search_history.extend(data)
+                    except Exception as e:
+                        st.warning(f"Could not parse {fname}: {e}")
+
         # --- Analyze Watch History ---
         if watch_history:
             st.header("YouTube Watch History Analysis")
@@ -107,3 +119,23 @@ if uploaded_file:
             st.write(f"**Estimated value generated (search history):** ${value_search:.2f}")
         else:
             st.info("No YouTube Search History found or could not be parsed.")
+
+        # --- Analyze Google Search History ---
+        if google_search_history:
+            st.header("Google Search History Analysis")
+            # Extract queries from entries where title starts with 'Searched for'
+            queries = []
+            for entry in google_search_history:
+                title = entry.get("title", "")
+                if title.startswith("Searched for"):
+                    # Extract the query after 'Searched for '
+                    query = title.replace("Searched for ", "", 1)
+                    queries.append(query)
+            total_searches = len(queries)
+            st.write(f"**Total Google searches:** {total_searches}")
+            unique_queries = set(queries)
+            st.write(f"**Number of unique Google searches:** {len(unique_queries)}")
+            value_search = total_searches * 0.03
+            st.write(f"**Estimated value generated (Google search history):** ${value_search:.2f}")
+        else:
+            st.info("No Google Search History found or could not be parsed.")
